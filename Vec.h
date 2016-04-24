@@ -43,7 +43,6 @@ Vec<T>::iterator::iterator(Vec<T>* source, size_t start_pos)
 	_pos = start_pos;
 }
 
-#include"Vec.h"
 template<typename T>
 Vec<T>::Vec(size_t n)
 {
