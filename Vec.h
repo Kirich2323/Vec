@@ -1,111 +1,160 @@
 #pragma once
-template<typename T>
+#include"allocator.h"
+
+template<typename T, typename Allocator>
 class Vec
 {
 public:
-	class iterator;
-	Vec(size_t n = 0);
-	Vec(const Vec<T>& vec);
-	~Vec();
-	size_t size() { return _size; }
-	T& operator[](int ind);
-	Vec<T>& operator=(const Vec<T>& right);
-	iterator begin() { return iterator(this, 0); }
-	iterator end() { return iterator(this, _size - 1); }
+	typedef Allocator allocator_type;
+	typedef typename allocator_type::value_type      value_type;
+	typedef typename allocator_type::reference       reference;
+	typedef typename allocator_type::const_reference const_reference;
+	typedef typename allocator_type::size_type       size_type;
+	typedef typename allocator_type::difference_type difference_type;
+	typedef typename allocator_type::pointer         pointer;
+	typedef typename allocator_type::const_pointer   const_pointer;
+	typedef pointer       iterator;
+	typedef const_pointer const_iterator;
+	typedef std::reverse_iterator<iterator> reverse_iterator;
+	typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+	explicit Vec(const allocator_type& alloc = allocator_type())
+	{
+
+	}
+
+	Vec(size_type n = 0)
+	{
+		allocate(n);
+		/*_head = _alloc.allocate(n);
+		_size = n;*/
+	}
+
+
+	Vec(size_type n, allocator_type alloc)
+	{
+		_alloc = alloc;
+		allocate(n);
+		/*_size = n;
+		if (_size > 0)
+			_head = _alloc.allocate(n);*/
+	}
+
+	//Vec(const Vec& vec)
+	//{
+	//	destroy(_head, _end);
+	//	_alloc = vec._alloc;
+	//	if (vec.size() > this->_capacity)
+	//	{
+	//		allocate(2 * vec.size() * sizeof(value_type));
+	//		copy(vec._head, _head, _size);
+	//	}
+	//	/*_size = vec._size;
+	//	_end = vec._end;
+	//	_head = vec._head;
+	//	_alloc = vec._alloc;*/
+	//}
+
+	~Vec()
+	{
+		destroy(_head, _end);
+		_alloc.deallocate(_head, _size);
+	}
+
+	iterator begin() 
+	{
+		return _head;
+	}
+
+	const_iterator begin() const 
+	{
+		return _head;
+	}
+
+	iterator end() 
+	{
+		return _end;
+	}
+
+	const_iterator end() const 
+	{
+		return _end;
+	}
+
+	void push_back(const value_type elem)
+	{
+		if (++_size > _capacity)
+		{
+			//pointer new_head = _alloc.allocate(_size * 2);
+			pointer old_head = _head;
+			size_type old_capacity = _capacity;
+			allocate(_size * 2);
+		/*	if (_capacity != 0)
+			{*/
+			copy(old_head, _head, sizeof(value_type) * old_capacity);
+			_alloc.deallocate(old_head, old_capacity);
+			//?}
+		}
+
+		*(_head + _size - 1) = elem;
+	}
+
+	size_type size() const 
+	{
+		return _size; 
+	}
+
+	bool empty() const
+	{
+		return !((bool)_size);
+	}
+
+	reference operator[](size_type ind)
+	{
+		return *(_head + ind);
+	}
+
+	Vec& operator=(const Vec& right)
+	{
+		destroy(_head, _end);
+		_alloc = right._alloc;
+		if (right.size() > _capacity)
+		{
+			allocate(2 * right.size() * sizeof(value_type));
+			copy(right._head, _head, _size);
+		}
+		return *this;
+	}
+
 private:
+	allocator_type _alloc;
 	size_t _size;
-	T* _head;
-	iterator _rear;
+	size_t _capacity;
+	pointer _head;
+	pointer _end;
+
+	pointer allocate(size_type size)
+	{
+		if (_size > 0)
+		{
+			_capacity = 2 * size;
+			_head = _alloc.allocate(_capacity);
+			_end = _head + size;
+			_size = size;
+		}
+		return _head;
+	}
+
+	void destroy(pointer begin, pointer end)
+	{
+		for (pointer it = begin; it < end; it++)
+			//it->~value_type();
+			_alloc.destroy(it);
+	}
+
+	void copy(pointer from, pointer to, size_type size)
+	{
+		for (size_type i = 0; i < size; ++i)
+			*(to++) = *(from++);
+	}
 };
-
-template<typename T>
-class Vec<T>::iterator
-{
-public:
-	iterator(Vec<T>* source, size_t start_pos);
-	iterator() {}
-	T& operator*() { return (*_vec)[_pos]; }
-	T& operator++();
-	T& operator--();
-	bool operator==(iterator& r);
-	bool operator!=(iterator& r);
-	Vec<T>* vec;
-	size_t pos;
-private:
-	Vec<T>* _vec;
-	size_t _pos;
-};
-
-template<typename T>
-Vec<T>::iterator::iterator(Vec<T>* source, size_t start_pos)
-{
-	_vec = source;
-	_pos = start_pos;
-}
-
-template<typename T>
-Vec<T>::Vec(size_t n)
-{
-	_head = new T[n];
-	_size = n;
-}
-
-template<typename T>
-inline Vec<T>::Vec(const Vec<T>& vec)
-{
-	_size = vec._size;
-	_rear = vec._rear;
-	_head = vec._head;
-}
-
-template<typename T>
-Vec<T>::~Vec()
-{
-
-}
-
-template<typename T>
-T& Vec<T>::operator[](int ind)
-{
-	return *(_head + ind);
-}
-
-template<typename T>
-inline Vec<T>& Vec<T>::operator=(const Vec<T>& right)
-{
-	delete[] _head;
-	_size = right._size;
-	_rear = right._rear;
-	_head = right._head;
-	return *this;
-}
-
-template<typename T>
-T& Vec<T>::iterator::operator++()
-{
-	if (_pos == _vec->size())
-		throw(runtime_error("Iterator is not incrementable"));
-	else
-		++_pos;
-}
-
-template<typename T>
-T& Vec<T>::iterator::operator--()
-{
-	if (_pos == 0)
-		throw(runtime_error("Iterator is not decrementable"));
-	else
-		--_pos;
-}
-
-template<typename T>
-bool Vec<T>::iterator::operator==(iterator& r)
-{
-	return r._vec == _vec && r._pos == _pos;
-}
-
-template<typename T>
-bool Vec<T>::iterator::operator!=(iterator& r)
-{
-	return r._vec != _vec || r._pos != _pos;
-}
